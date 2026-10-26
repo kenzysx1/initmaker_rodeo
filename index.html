@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Iniciativa por Cartas - Owlbear Rodeo</title>
-  <!-- Owlbear Rodeo SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@3/lib/index.min.js"></script>
   <style>
     :root {
       --bg-dark: #181a20;
@@ -71,7 +69,7 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: #2ecc71;
+      background: #f59e0b;
     }
 
     /* Deck Counter Info */
@@ -450,37 +448,37 @@
 
   <!-- Deck & Round Info -->
   <div class="deck-info-bar">
-    <div>🃏 Cartas no Baralho: <span class="deck-badge" id="cards-remaining">52/52</span></div>
+    <div>🃏 Baralho: <span class="deck-badge" id="cards-remaining">52/52</span></div>
     <div>⚔️ Participantes: <span class="deck-badge" id="total-participants">0</span></div>
   </div>
 
   <!-- Action Controls -->
   <div class="actions-grid">
-    <button class="btn btn-draw" onclick="drawCardNormal()">
+    <button class="btn btn-draw" onclick="window.drawCardNormal()">
       <span>🃏</span> <span>Puxar 1</span>
     </button>
-    <button class="btn btn-advantage" onclick="drawCardAdvantage()" title="Puxa 2 cartas e fica com a de menor valor (mais rápida)">
+    <button class="btn btn-advantage" onclick="window.drawCardAdvantage()" title="Puxa 2 cartas e fica com a de menor valor (mais rápida)">
       <span>⚡</span> <span>Vantagem</span>
     </button>
-    <button class="btn btn-disadvantage" onclick="drawCardDisadvantage()" title="Puxa 2 cartas e mantém a de maior valor (mais lenta)">
+    <button class="btn btn-disadvantage" onclick="window.drawCardDisadvantage()" title="Puxa 2 cartas e mantém a de maior valor (mais lenta)">
       <span>🐢</span> <span>Desvantagem</span>
     </button>
   </div>
 
   <!-- GM Controls -->
   <div class="gm-controls">
-    <button class="btn btn-gm" onclick="openPdmModal()">
+    <button class="btn btn-gm" onclick="window.openPdmModal()">
       <span>👑</span> <span>Add PdM / Mestre</span>
     </button>
-    <button class="btn btn-reset" onclick="confirmResetRound()">
+    <button class="btn btn-reset" onclick="window.confirmResetRound()">
       <span>🔄</span> <span>Nova Rodada</span>
     </button>
   </div>
 
   <!-- View Switcher Tabs -->
   <div class="view-switcher">
-    <button class="view-tab active" id="tab-board-btn" onclick="setViewMode('board')">Quadro Dividido (3 Seções)</button>
-    <button class="view-tab" id="tab-list-btn" onclick="setViewMode('list')">Ordem dos Turnos (Lista)</button>
+    <button class="view-tab active" id="tab-board-btn" onclick="window.setViewMode('board')">Quadro Dividido (3 Seções)</button>
+    <button class="view-tab" id="tab-list-btn" onclick="window.setViewMode('list')">Ordem dos Turnos (Lista)</button>
   </div>
 
   <!-- View 1: 3-Section Board -->
@@ -533,15 +531,19 @@
         <span>👑</span>
         <span>Adicionar Mestre ou PdM</span>
       </div>
-      <input type="text" id="pdm-name-input" class="input-field" placeholder="Ex: Mestre, Chefe Orc, Goblin 1..." maxlength="25" onkeydown="if(event.key==='Enter') submitPdmModal()">
+      <input type="text" id="pdm-name-input" class="input-field" placeholder="Ex: Mestre, Chefe Orc, Goblin 1..." maxlength="25" onkeydown="if(event.key==='Enter') window.submitPdmModal()">
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="closePdmModal()">Cancelar</button>
-        <button class="btn btn-gm" onclick="submitPdmModal()">Puxar Carta</button>
+        <button class="btn btn-secondary" onclick="window.closePdmModal()">Cancelar</button>
+        <button class="btn btn-gm" onclick="window.submitPdmModal()">Puxar Carta</button>
       </div>
     </div>
   </div>
 
-  <script>
+  <!-- ESM Module Script -->
+  <script type="module">
+    import OBR from "https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@3/+esm";
+    window.OBR = OBR;
+
     // Constants & Suits mapping
     const SUITS = {
       'Copas': { icon: '♥', color: '#dc2626' },
@@ -568,7 +570,6 @@
 
     const METADATA_KEY = "br.rpg.initiative-deck.v1";
 
-    // Application State
     let state = {
       deck: [],
       entries: [],
@@ -581,9 +582,8 @@
       isGM: false
     };
 
-    let viewMode = 'board'; // 'board' | 'list'
+    let isConnectedToOBR = false;
 
-    // Deck generator
     function createFreshDeck() {
       const cards = [];
       for (const suit of Object.keys(SUITS)) {
@@ -598,7 +598,6 @@
           });
         }
       }
-      // Shuffle Fisher-Yates
       for (let i = cards.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [cards[i], cards[j]] = [cards[j], cards[i]];
@@ -613,10 +612,9 @@
       return state.deck.pop();
     }
 
-    // Save and Sync State with Owlbear Rodeo
     async function syncState() {
       updateUI();
-      if (typeof OBR !== "undefined" && OBR.isAvailable) {
+      if (isConnectedToOBR) {
         try {
           await OBR.room.setMetadata({
             [METADATA_KEY]: state
@@ -629,11 +627,21 @@
       }
     }
 
-    // Initialize Owlbear Rodeo
-    async function initOBR() {
-      if (typeof OBR !== "undefined" && OBR.isAvailable) {
+    function notifyRoom(msg) {
+      if (isConnectedToOBR) {
+        try {
+          OBR.notification.show(msg);
+        } catch(e) {}
+      }
+    }
+
+    // Initialize Connection with Owlbear Rodeo
+    function initConnection() {
+      if (OBR && OBR.isAvailable) {
         OBR.onReady(async () => {
+          isConnectedToOBR = true;
           document.getElementById('obr-dot').style.background = "#2ecc71";
+          
           try {
             const name = await OBR.player.getName();
             const id = await OBR.player.getId();
@@ -646,12 +654,12 @@
             console.error("Erro ao obter jogador:", e);
           }
 
-          // Initial load from room metadata
+          // Load state from room
           const metadata = await OBR.room.getMetadata();
           if (metadata && metadata[METADATA_KEY]) {
             state = metadata[METADATA_KEY];
           } else {
-            // First time room setup
+            // First time room setup by GM
             state.deck = createFreshDeck();
             state.entries = [];
             state.playersDrawn = [];
@@ -659,7 +667,7 @@
           }
           updateUI();
 
-          // Listen for room metadata updates from other players/GM
+          // Listen for room metadata updates from other players / GM in real-time!
           OBR.room.onMetadataChange((meta) => {
             if (meta && meta[METADATA_KEY]) {
               state = meta[METADATA_KEY];
@@ -668,7 +676,7 @@
           });
         });
       } else {
-        // Standalone offline fallback
+        // Fallback offline
         document.getElementById('player-name').innerText = "Modo Local";
         document.getElementById('obr-dot').style.background = "#f59e0b";
         const saved = localStorage.getItem(METADATA_KEY);
@@ -684,9 +692,8 @@
       }
     }
 
-    // Check if player can draw
     function canCurrentPlayerDraw() {
-      if (currentPlayer.isGM) return true; // GM can always draw for testing
+      if (currentPlayer.isGM) return true;
       if (state.playersDrawn && state.playersDrawn.includes(currentPlayer.id)) {
         alert("❌ Você já puxou sua carta de iniciativa nesta rodada!");
         return false;
@@ -701,8 +708,7 @@
       }
     }
 
-    // Draw Actions
-    async function drawCardNormal() {
+    window.drawCardNormal = async function() {
       if (!canCurrentPlayerDraw()) return;
 
       const card = drawSingleCard();
@@ -719,14 +725,13 @@
       await syncState();
 
       notifyRoom(`🃏 ${currentPlayer.name} puxou ${card.name} de ${card.suitName} (${card.symbol}${card.suitIcon} - Val: ${card.value})`);
-    }
+    };
 
-    async function drawCardAdvantage() {
+    window.drawCardAdvantage = async function() {
       if (!canCurrentPlayerDraw()) return;
 
       const c1 = drawSingleCard();
       const c2 = drawSingleCard();
-      // Vantagem = Menor valor (mais rápido)
       const chosen = (c1.value <= c2.value) ? c1 : c2;
 
       const entry = {
@@ -742,14 +747,13 @@
       await syncState();
 
       notifyRoom(`⚡ ${currentPlayer.name} puxou com VANTAGEM: [${c1.symbol}${c1.suitIcon} (${c1.value})] e [${c2.symbol}${c2.suitIcon} (${c2.value})] ➔ Ficou com ${chosen.symbol}${chosen.suitIcon} (Val: ${chosen.value})`);
-    }
+    };
 
-    async function drawCardDisadvantage() {
+    window.drawCardDisadvantage = async function() {
       if (!canCurrentPlayerDraw()) return;
 
       const c1 = drawSingleCard();
       const c2 = drawSingleCard();
-      // Desvantagem = Maior valor (mais lento)
       const chosen = (c1.value >= c2.value) ? c1 : c2;
 
       const entry = {
@@ -765,27 +769,26 @@
       await syncState();
 
       notifyRoom(`🐢 ${currentPlayer.name} puxou com DESVANTAGEM: [${c1.symbol}${c1.suitIcon} (${c1.value})] e [${c2.symbol}${c2.suitIcon} (${c2.value})] ➔ Manteve ${chosen.symbol}${chosen.suitIcon} (Val: ${chosen.value})`);
-    }
+    };
 
-    // Modal NPC / GM
-    function openPdmModal() {
+    window.openPdmModal = function() {
       const modal = document.getElementById('pdm-modal');
       const input = document.getElementById('pdm-name-input');
       modal.style.display = 'flex';
       input.value = "";
       setTimeout(() => input.focus(), 50);
-    }
+    };
 
-    function closePdmModal() {
+    window.closePdmModal = function() {
       document.getElementById('pdm-modal').style.display = 'none';
-    }
+    };
 
-    async function submitPdmModal() {
+    window.submitPdmModal = async function() {
       const input = document.getElementById('pdm-name-input');
       const name = input.value.trim();
       if (!name) return;
 
-      closePdmModal();
+      window.closePdmModal();
       const card = drawSingleCard();
 
       const entry = {
@@ -800,27 +803,24 @@
       await syncState();
 
       notifyRoom(`👑 ${name} puxou ${card.name} de ${card.suitName} (${card.symbol}${card.suitIcon} - Val: ${card.value})`);
-    }
+    };
 
-    // Remove Participant
-    async function removeParticipant(entryId) {
+    window.removeParticipant = async function(entryId) {
       const idx = state.entries.findIndex(e => e.id === entryId);
       if (idx === -1) return;
 
       const removed = state.entries[idx];
       state.entries.splice(idx, 1);
 
-      // Liberar jogador para puxar de novo
       if (removed.userId && state.playersDrawn) {
         state.playersDrawn = state.playersDrawn.filter(uid => uid !== removed.userId);
       }
 
       await syncState();
       notifyRoom(`🗑️ ${removed.name} foi removido(a) da iniciativa.`);
-    }
+    };
 
-    // Reset Round
-    async function confirmResetRound() {
+    window.confirmResetRound = async function() {
       if (state.entries.length > 0) {
         if (!confirm("Tem certeza que deseja reiniciar a rodada e reembaralhar o baralho?")) {
           return;
@@ -833,33 +833,22 @@
 
       await syncState();
       notifyRoom("🔄 A iniciativa foi reiniciada e o baralho foi reembaralhado!");
-    }
+    };
 
-    function notifyRoom(msg) {
-      if (typeof OBR !== "undefined" && OBR.isAvailable) {
-        try {
-          OBR.notification.show(msg);
-        } catch(e) {}
-      }
-    }
-
-    // View Switching
-    function setViewMode(mode) {
-      viewMode = mode;
+    window.setViewMode = function(mode) {
       document.getElementById('tab-board-btn').classList.toggle('active', mode === 'board');
       document.getElementById('tab-list-btn').classList.toggle('active', mode === 'list');
       document.getElementById('view-board').style.display = mode === 'board' ? 'block' : 'none';
       document.getElementById('view-list').style.display = mode === 'list' ? 'block' : 'none';
-    }
+    };
 
-    // Render Card Element
     function createCardElement(entry) {
       const card = entry.card;
       const cardEl = document.createElement('div');
       cardEl.className = 'card';
 
       cardEl.innerHTML = `
-        <button class="card-delete-btn" title="Remover da iniciativa" onclick="removeParticipant('${entry.id}')">✕</button>
+        <button class="card-delete-btn" title="Remover da iniciativa" onclick="window.removeParticipant('${entry.id}')">✕</button>
         <div class="card-top" title="${entry.name}">${entry.name}</div>
         <div class="card-center" style="color: ${card.color};">
           <span class="card-symbol">${card.symbol}</span>
@@ -873,13 +862,11 @@
       return cardEl;
     }
 
-    // Update UI based on current state
     function updateUI() {
       const remainingCount = state.deck ? state.deck.length : 52;
       document.getElementById('cards-remaining').innerText = `${remainingCount}/52`;
       document.getElementById('total-participants').innerText = state.entries ? state.entries.length : 0;
 
-      // Grouping logic (identical to the Python bot)
       const gmEntries = state.entries.filter(e => e.is_gm_side);
       const mestreMinVal = gmEntries.length > 0 
         ? Math.min(...gmEntries.map(e => e.card.value)) 
@@ -901,17 +888,14 @@
         }
       }
 
-      // Sort lowest card value first (faster initiative)
       pjsBefore.sort((a, b) => a.card.value - b.card.value);
       gmAndPdms.sort((a, b) => a.card.value - b.card.value);
       pjsAfter.sort((a, b) => a.card.value - b.card.value);
 
-      // Render 3 Sections
       renderSection('cards-fast', 'count-fast', pjsBefore, "Nenhum jogador nesta seção.");
       renderSection('cards-gm', 'count-gm', gmAndPdms, "Nenhum PdM ou Mestre adicionado.");
       renderSection('cards-slow', 'count-slow', pjsAfter, "Nenhum jogador nesta seção.");
 
-      // Render Compact List
       renderList([...pjsBefore, ...gmAndPdms, ...pjsAfter].sort((a, b) => a.card.value - b.card.value));
     }
 
@@ -952,17 +936,15 @@
                 <span>${c.symbol}${c.suitIcon}</span>
                 <span style="font-size:10px; color:#6b7280;">(Val: ${c.value})</span>
               </span>
-              <button class="delete-item-btn" title="Remover participante" onclick="removeParticipant('${entry.id}')">✕</button>
+              <button class="delete-item-btn" title="Remover participante" onclick="window.removeParticipant('${entry.id}')">✕</button>
             </div>
           </div>
         `;
       }).join('');
     }
 
-    // On Load
-    window.addEventListener('DOMContentLoaded', () => {
-      initOBR();
-    });
+    // Start
+    initConnection();
   </script>
 </body>
 </html>
