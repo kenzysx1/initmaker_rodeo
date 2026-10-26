@@ -1,0 +1,14 @@
+{
+  "name": "Iniciativa por Cartas",
+  "version": "1.0.0",
+  "manifest_version": 1,
+  "description": "Rastreador de Iniciativa por baralho de cartas com Vantagem, Desvantagem e divisão de turnos para Owlbear Rodeo.",
+  "icon": "icon.svg",
+  "action": {
+    "title": "Iniciativa por Cartas",
+    "icon": "icon.svg",
+    "popover": "index.html",
+    "width": 520,
+    "height": 720
+  }
+}
