@@ -2,12 +2,12 @@
   "name": "Iniciativa por Cartas",
   "version": "1.0.0",
   "manifest_version": 1,
-  "description": "Rastreador de Iniciativa por baralho de cartas com Vantagem, Desvantagem e divisão de turnos para Owlbear Rodeo.",
-  "icon": "icon.svg",
+  "description": "Rastreador de Iniciativa por baralho de cartas para Owlbear Rodeo.",
+  "icon": "https://kenzysx1.github.io/iniciativa-cartas/icon.svg",
   "action": {
     "title": "Iniciativa por Cartas",
-    "icon": "icon.svg",
-    "popover": "index.html",
+    "icon": "https://kenzysx1.github.io/iniciativa-cartas/icon.svg",
+    "popover": "https://kenzysx1.github.io/iniciativa-cartas/index.html",
     "width": 520,
     "height": 720
   }
