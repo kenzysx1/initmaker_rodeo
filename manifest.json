@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "manifest_version": 1,
   "description": "Rastreador de Iniciativa por baralho de cartas para Owlbear Rodeo.",
-  "icon": "https://kenzysx1.github.io/iniciativa-cartas/icon.svg",
+  "icon": "https://kenzysx1.github.io/initmaker_rodeo/icon.svg",
   "action": {
     "title": "Iniciativa por Cartas",
-    "icon": "https://kenzysx1.github.io/iniciativa-cartas/icon.svg",
-    "popover": "https://kenzysx1.github.io/iniciativa-cartas/index.html",
+    "icon": "https://kenzysx1.github.io/initmaker_rodeo/icon.svg",
+    "popover": "https://kenzysx1.github.io/initmaker_rodeo/index.html",
     "width": 520,
     "height": 720
   }
